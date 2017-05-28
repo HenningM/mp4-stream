@@ -114,6 +114,7 @@ Decoder.prototype._readBox = function () {
       } else {
         self._pending++
         self._headers = headers
+        self._headerBuf = buf
         self.emit('box', headers)
       }
     })
@@ -138,6 +139,21 @@ Decoder.prototype.decode = function (cb) {
   self._buffer(headers.contentLen, function (buf) {
     var box = Box.decodeWithoutHeaders(headers, buf)
     cb(box)
+    self._pending--
+    self._kick()
+  })
+}
+
+Decoder.prototype.rawBox = function (cb) {
+  var self = this
+  if (!self._headers) throw new Error('this function can only be called once after \'box\' is emitted')
+  var headers = self._headers
+  var headerBuf = self._headerBuf
+  self._headers = null
+  self._headerBuf = null
+
+  self._buffer(headers.contentLen, function (buf) {
+    cb(Buffer.concat([headerBuf, buf]))
     self._pending--
     self._kick()
   })
